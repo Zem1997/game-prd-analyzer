@@ -1,0 +1,1854 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game PRD Analyzer | 游戏策划需求解析器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;430;450;480;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #17191c;
+      --paper: #ffffff;
+      --mist: #f2f2f3;
+      --fog: #fafafb;
+      --slate: #777b86;
+      --ash: #979799;
+      --smoke: #a3a6af;
+      --peach: #fbe1d1;
+      --sienna: #5d2a1a;
+      --border: #ececec;
+      --shadow: 0 0 0 1px rgba(4,23,43,0.05), 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+      --shadow-sm: 0 0 0 1px rgba(4,23,43,0.05), 0 4px 12px rgba(0,0,0,0.06);
+    }
+    * { font-family: 'Inter', 'Noto Sans SC', system-ui, sans-serif; }
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-serif { font-family: 'Noto Serif SC', 'Source Serif 4', Georgia, serif; }
+    .font-sans { font-family: 'Inter', 'Noto Sans SC', system-ui, sans-serif; }
+    .section-title {
+      font-family: 'Noto Serif SC', 'Source Serif 4', Georgia, serif;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+    }
+    .text-ink { color: var(--ink); }
+    .text-slate { color: var(--slate); }
+    .text-ash { color: var(--ash); }
+    .bg-mist { background-color: var(--mist); }
+    .bg-fog { background-color: var(--fog); }
+    .bg-peach { background-color: var(--peach); }
+    .text-sienna { color: var(--sienna); }
+    .border-hairline { border-color: var(--border); }
+    .card {
+      background: var(--mist);
+      border-radius: 24px;
+      border: 1px solid transparent;
+    }
+    .card-white {
+      background: var(--paper);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+    .btn-pill {
+      border-radius: 9999px;
+      padding: 10px 20px;
+      font-size: 15px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    .btn-pill-primary {
+      background: var(--ink);
+      color: var(--paper);
+    }
+    .btn-pill-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(23,25,28,0.2);
+    }
+    .btn-pill-primary:disabled {
+      background: #d1d1d3;
+      color: #777b86;
+      cursor: not-allowed;
+    }
+    .btn-pill-ghost {
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid var(--ink);
+    }
+    .btn-pill-ghost:hover {
+      background: rgba(23,25,28,0.04);
+    }
+    .input-field {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      transition: all 0.2s ease;
+    }
+    .input-field:focus {
+      border-color: var(--ink);
+      box-shadow: 0 0 0 3px rgba(23,25,28,0.06);
+      outline: none;
+    }
+    .drop-zone {
+      background: var(--fog);
+      border: 2px dashed #d4d4d8;
+      border-radius: 24px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .drop-zone:hover {
+      border-color: var(--sienna);
+      background: rgba(251,225,209,0.35);
+    }
+    .drop-zone.drag-over {
+      border-color: var(--sienna);
+      background: rgba(251,225,209,0.55);
+      transform: scale(1.005);
+    }
+    .step-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .step-badge-inactive { background: var(--mist); color: var(--slate); }
+    .step-badge-active { background: var(--ink); color: var(--paper); }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .status-dot.pending { background: var(--ash); }
+    .status-dot.processing { background: var(--ink); animation: pulse 1.5s infinite; }
+    .status-dot.success { background: #10b981; }
+    .status-dot.error { background: #ef4444; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+    .output-section {
+      background: var(--paper);
+      border-radius: 24px;
+      border: 1px solid var(--border);
+      padding: 28px;
+      margin-bottom: 16px;
+    }
+    .output-section-title {
+      font-family: 'Noto Serif SC', 'Source Serif 4', Georgia, serif;
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--ink);
+      letter-spacing: -0.01em;
+    }
+    .missing-tag {
+      background: var(--peach);
+      color: var(--sienna);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .supplement-tag {
+      background: var(--fog);
+      color: var(--slate);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      border: 1px solid var(--border);
+    }
+    .step-nav-item {
+      padding: 8px 12px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+    .step-nav-item:hover { background: var(--mist); }
+    .step-nav-item.active { background: var(--ink); color: var(--paper); }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 3px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #b0b0b4; }
+    .artifact-card {
+      background: var(--paper);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      padding: 20px;
+    }
+    .toast {
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .wireframe-device {
+      background: #1a1a1e;
+      border-radius: 28px;
+      padding: 12px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+      display: inline-block;
+    }
+    .wireframe-screen {
+      background: #121214;
+      border-radius: 20px;
+      overflow: hidden;
+      position: relative;
+    }
+    .wireframe-screen-pc {
+      background: #121214;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      border: 8px solid #2a2a2e;
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div id="app" class="max-w-6xl mx-auto px-5 md:px-8 pb-20">
+    <!-- Header / Hero -->
+    <header class="pt-12 md:pt-16 pb-10 md:pb-14">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-10">
+        <div class="max-w-2xl">
+          <p class="text-ash text-sm font-medium tracking-wide mb-3">GAME PRD ANALYZER</p>
+          <h1 class="text-4xl md:text-6xl section-title mb-5">把策划需求<br>拆成交互设计师能用的结构。</h1>
+          <p class="text-slate text-base md:text-lg leading-relaxed max-w-xl">
+            拖拽上传策划 PRD / 系统方案 / Excel 表格，自动解析文字与内嵌图片，按交互设计标准 9 步结构拆解。
+          </p>
+          <div class="flex flex-wrap items-center gap-3 mt-8">
+            <button onclick="scrollToInput()" class="btn-pill btn-pill-primary">开始分析</button>
+            <button onclick="loadExample()" class="btn-pill btn-pill-ghost">加载示例</button>
+          </div>
+        </div>
+        <div class="hidden md:block">
+          <div class="artifact-card w-72 rotate-1">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="w-8 h-8 rounded-full bg-peach flex items-center justify-center text-sienna text-xs font-bold">9</div>
+              <span class="text-sm font-medium">步交互分析框架</span>
+            </div>
+            <div class="space-y-2.5">
+              <div class="h-2 bg-mist rounded-full w-full"></div>
+              <div class="h-2 bg-mist rounded-full w-5/6"></div>
+              <div class="h-2 bg-mist rounded-full w-4/6"></div>
+            </div>
+            <div class="mt-5 flex items-center gap-2">
+              <span class="missing-tag">需求缺失 3 处</span>
+              <span class="supplement-tag">推演补充 2 处</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="mainInput">
+      <!-- Left Panel -->
+      <div class="lg:col-span-2 space-y-5">
+        <!-- Input Card -->
+        <section class="card p-6 md:p-7">
+          <div class="flex items-center justify-between mb-5">
+            <div class="flex items-center gap-3">
+              <span class="step-badge step-badge-active">1</span>
+              <h2 class="text-xl font-semibold text-ink">输入策划文档</h2>
+            </div>
+            <span class="text-xs text-ash px-3 py-1 rounded-full bg-paper border border-hairline">TXT / MD / DOCX / Excel</span>
+          </div>
+
+          <div id="dropZone" class="drop-zone p-10 text-center cursor-pointer relative overflow-hidden group">
+            <div class="relative">
+              <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-peach/60 flex items-center justify-center text-sienna">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+              </div>
+              <p class="text-base text-ink font-medium mb-1">拖拽策划文档到这里</p>
+              <p class="text-sm text-slate">或点击选择文件</p>
+            </div>
+            <input type="file" id="fileUpload" accept=".txt,.md,.docx,.xlsx,.xls" class="hidden">
+          </div>
+
+          <div id="fileInfo" class="hidden mt-4 p-4 rounded-2xl bg-paper border border-hairline">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-peach/50 flex items-center justify-center text-sienna">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                </div>
+                <div>
+                  <p id="fileName" class="text-sm text-ink font-medium"></p>
+                  <p id="fileStatus" class="text-xs text-slate mt-1 flex items-center gap-1.5">
+                    <span class="status-dot pending"></span>
+                    <span>等待解析...</span>
+                  </p>
+                </div>
+              </div>
+              <button onclick="removeFile()" class="text-sm text-slate hover:text-ink font-medium px-3 py-1.5 rounded-full hover:bg-mist transition-colors">移除</button>
+            </div>
+          </div>
+
+          <div class="mt-5 flex items-center gap-4">
+            <button onclick="toggleManualInput()" class="text-sm text-ink hover:text-sienna font-medium flex items-center gap-1.5 transition-colors">
+              <span id="manualToggleText">手动粘贴文本</span>
+              <svg id="manualToggleIcon" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+            <button onclick="clearInput()" class="text-sm text-ash hover:text-red-500 transition-colors">清空</button>
+          </div>
+          <div id="manualInputArea" class="hidden mt-4">
+            <textarea id="prdInput" placeholder="在此粘贴游戏系统策划方案 / PRD 文本（可选）..." class="w-full h-40 input-field p-4 text-sm text-ink placeholder-ash resize-y custom-scrollbar"></textarea>
+          </div>
+
+          <div class="mt-5 bg-peach/40 rounded-2xl p-4 border border-peach">
+            <p class="text-sm text-sienna leading-relaxed">
+              <span class="font-semibold">说明：</span>工具会自动解析文档中的文字和<strong>内嵌图片/流程图/示意图</strong>，并一并交给 AI 分析。图片本身不会在此页面展示。
+            </p>
+          </div>
+        </section>
+
+        <!-- Advanced Settings -->
+        <section class="card p-6 md:p-7">
+          <button onclick="toggleAdvancedConfig()" class="w-full flex items-center justify-between text-left group">
+            <div class="flex items-center gap-3">
+              <span class="step-badge step-badge-inactive group-hover:bg-peach group-hover:text-sienna transition-colors">2</span>
+              <div>
+                <h2 class="text-xl font-semibold text-ink">高级分析配置</h2>
+                <p class="text-xs text-ash mt-0.5">默认已针对手游/App 通用需求优化，通常无需调整。</p>
+              </div>
+            </div>
+            <svg id="advancedConfigIcon" class="w-5 h-5 text-ash transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </button>
+          <div id="advancedConfigBody" class="hidden mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm text-slate mb-2 font-medium">游戏品类</label>
+              <select id="gameGenre" class="input-field w-full rounded-2xl px-3 py-2.5 text-sm text-ink bg-paper">
+                <option value="general">通用</option>
+                <option value="rpg">RPG</option>
+                <option value="slg">SLG</option>
+                <option value="card">卡牌</option>
+                <option value="casual">休闲/超休闲</option>
+                <option value="moba">MOBA</option>
+                <option value="fps" selected>射击/FPS</option>
+                <option value="simulation">模拟经营</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm text-slate mb-2 font-medium">分析深度</label>
+              <select id="analysisDepth" class="input-field w-full rounded-2xl px-3 py-2.5 text-sm text-ink bg-paper">
+                <option value="strict">严格（大量标记待确认）</option>
+                <option value="balanced" selected>平衡（适度推演补充）</option>
+                <option value="fast">快速（仅提取明确信息）</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm text-slate mb-2 font-medium">目标平台</label>
+              <select id="targetPlatform" class="input-field w-full rounded-2xl px-3 py-2.5 text-sm text-ink bg-paper">
+                <option value="mobile">手游/App</option>
+                <option value="pc" selected>PC/主机</option>
+                <option value="multi">多端</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <!-- AI Config -->
+        <section class="card p-6 md:p-7">
+          <div class="flex items-start gap-3 mb-5">
+            <span class="step-badge step-badge-inactive mt-0.5">3</span>
+            <div>
+              <h2 class="text-xl font-semibold text-ink">AI 模型配置</h2>
+              <p class="text-xs text-ash mt-1 leading-relaxed">开始分析前必须选择模型并填写对应 API Key。没有 API Key 可先「复制分析 Prompt」到 WorkBuddy 中使用。</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label class="block text-sm text-ink mb-2 font-medium">选择 AI 模型 <span class="text-sienna">*</span></label>
+              <div class="relative">
+                <select id="aiModel" class="input-field w-full rounded-2xl px-3 py-2.5 text-sm text-ink appearance-none cursor-pointer bg-paper">
+                  <option value="" disabled selected>— 请选择模型 —</option>
+                  <optgroup label="Anthropic（结构化分析最强）">
+                    <option value="anthropic:claude-opus-4-3-20261105">Claude Opus 4.3 ⭐ 最强推理</option>
+                    <option value="anthropic:claude-sonnet-4-20261105">Claude Sonnet 4 ⭐ 综合推荐</option>
+                    <option value="anthropic:claude-haiku-4-20261105">Claude Haiku 4（快且便宜）</option>
+                    <option value="anthropic:claude-3-5-sonnet-20241022">Claude Sonnet 3.5</option>
+                    <option value="anthropic:claude-3-opus-20240229">Claude Opus 3</option>
+                  </optgroup>
+                  <optgroup label="OpenAI（视觉与输出稳定）">
+                    <option value="openai:gpt-5.5">GPT-5.5 ⭐ 最强综合</option>
+                    <option value="openai:gpt-4.1">GPT-4.1</option>
+                    <option value="openai:gpt-4o">GPT-4o（支持图片）</option>
+                    <option value="openai:gpt-4o-mini">GPT-4o mini（轻量）</option>
+                    <option value="openai:o3-mini">o3-mini（推理型）</option>
+                    <option value="openai:o1">o1（深度推理）</option>
+                  </optgroup>
+                  <optgroup label="Google（超长上下文 + 视觉）">
+                    <option value="google:gemini-2.5-pro">Gemini 2.5 Pro ⭐ 长文+视觉</option>
+                    <option value="google:gemini-2.0-flash">Gemini 2.0 Flash（快）</option>
+                    <option value="google:gemini-1.5-pro">Gemini 1.5 Pro</option>
+                  </optgroup>
+                  <optgroup label="阿里云（中文视觉）">
+                    <option value="aliyun:qwen-vl-max">Qwen-VL-Max（支持图片）</option>
+                    <option value="aliyun:qwen2.5-vl-72b-instruct">Qwen2.5-VL 72B</option>
+                    <option value="aliyun:qwen-max">Qwen-MAX（纯文本）</option>
+                  </optgroup>
+                  <optgroup label="Moonshot（中文长文本）">
+                    <option value="moonshot:kimi-k1-5">Kimi k1.5</option>
+                    <option value="moonshot:kimi-k2">Kimi K2</option>
+                  </optgroup>
+                  <optgroup label="DeepSeek（中文文本，高性价比）">
+                    <option value="deepseek:deepseek-chat">DeepSeek-V3</option>
+                    <option value="deepseek:deepseek-reasoner">DeepSeek-R1（推理型）</option>
+                  </optgroup>
+                  <optgroup label="SiliconFlow">
+                    <option value="siliconflow:deepseek-ai/DeepSeek-V3">SiliconFlow DeepSeek-V3</option>
+                    <option value="siliconflow:deepseek-ai/DeepSeek-R1">SiliconFlow DeepSeek-R1</option>
+                    <option value="siliconflow:Qwen/Qwen2.5-VL-72B-Instruct">SiliconFlow Qwen2.5-VL</option>
+                  </optgroup>
+                  <optgroup label="自定义">
+                    <option value="custom">自定义 OpenAI 兼容接口</option>
+                  </optgroup>
+                </select>
+                <svg class="w-4 h-4 absolute right-3 top-3.5 text-ash pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+              </div>
+              <p id="modelHint" class="text-xs text-slate mt-2 min-h-[1rem]"></p>
+            </div>
+            <div>
+              <label class="block text-sm text-ink mb-2 font-medium">API Key <span class="text-sienna">*</span></label>
+              <input type="password" id="apiKey" placeholder="sk-..." class="input-field w-full rounded-2xl px-3 py-2.5 text-sm text-ink placeholder-ash bg-paper">
+            </div>
+          </div>
+
+          <div class="mt-5 bg-fog rounded-2xl p-4 border border-hairline">
+            <h3 class="text-xs font-semibold text-ink mb-2">选择建议</h3>
+            <ul class="text-xs text-slate space-y-1.5 leading-relaxed">
+              <li class="flex items-start gap-2"><span class="text-ink mt-0.5">•</span><span><strong class="text-ink">Claude Opus 4.3 / Sonnet 4</strong>：结构化分析最强，最适合需求拆解</span></li>
+              <li class="flex items-start gap-2"><span class="text-ink mt-0.5">•</span><span><strong class="text-ink">GPT-5.5 / GPT-4.1 / GPT-4o</strong>：视觉理解强，图文混合文档首选</span></li>
+              <li class="flex items-start gap-2"><span class="text-ink mt-0.5">•</span><span><strong class="text-ink">Gemini 2.5 Pro</strong>：上下文窗口大，适合超大 Excel/长 PRD</span></li>
+              <li class="flex items-start gap-2"><span class="text-ink mt-0.5">•</span><span><strong class="text-ink">Qwen-VL-Max</strong>：阿里云视觉模型，中文图文理解优秀</span></li>
+              <li class="flex items-start gap-2"><span class="text-ink mt-0.5">•</span><span><strong class="text-ink">DeepSeek / Kimi</strong>：中文长文本强、成本低，但<strong class="text-sienna">无视觉能力</strong></span></li>
+            </ul>
+            <p class="text-xs text-ash mt-3 pt-3 border-t border-hairline">API Key 仅存储在浏览器本地，不会上传到任何服务器。</p>
+          </div>
+        </section>
+
+        <!-- Actions -->
+        <section class="space-y-4">
+          <div id="actionValidationMsg" class="hidden bg-peach/40 rounded-2xl p-3 text-sm text-sienna border border-peach"></div>
+          <div class="flex flex-wrap gap-3">
+            <button onclick="generatePrompt()" class="btn-pill btn-pill-ghost flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+              复制分析 Prompt
+            </button>
+            <button id="analyzeBtn" onclick="analyzeWithAI()" class="btn-pill btn-pill-primary flex items-center gap-2" disabled>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+              开始分析
+            </button>
+            <button onclick="exportMarkdown()" class="btn-pill btn-pill-ghost flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+              导出 Markdown
+            </button>
+            <button onclick="exportDocx()" class="btn-pill btn-pill-ghost flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+              导出 DOCX
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <!-- Right Panel: History -->
+      <aside class="lg:col-span-1">
+        <div class="card p-6 h-fit sticky top-6">
+          <div class="flex items-center justify-between mb-5">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-ash" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <h2 class="text-base font-semibold text-ink">历史记录</h2>
+            </div>
+            <button onclick="clearHistory()" class="text-xs text-ash hover:text-red-500 transition-colors">清空</button>
+          </div>
+          <div id="historyList" class="space-y-2 max-h-[calc(100vh-220px)] overflow-y-auto custom-scrollbar">
+            <p class="text-sm text-ash text-center py-8">暂无历史记录</p>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Output Section -->
+    <section id="outputSection" class="mt-16 hidden">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <p class="text-ash text-xs font-medium tracking-wide mb-1">ANALYSIS RESULT</p>
+          <h2 class="text-3xl section-title">分析结果</h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="copyOutput()" class="btn-pill btn-pill-ghost text-sm flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+            复制全文
+          </button>
+          <button onclick="exportMarkdown()" class="btn-pill btn-pill-ghost text-sm">导出 Markdown</button>
+        </div>
+      </div>
+
+      <!-- Step Navigation -->
+      <div class="bg-fog rounded-2xl p-3 border border-hairline mb-6">
+        <div class="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1" id="stepNav">
+          <!-- generated by JS -->
+        </div>
+      </div>
+
+      <!-- Competitor Reference -->
+      <div id="competitorSection" class="hidden mb-6">
+        <div class="output-section">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 rounded-full bg-peach flex items-center justify-center text-sienna text-sm font-bold">参</div>
+            <h3 class="text-xl font-semibold text-ink">竞品参考</h3>
+          </div>
+          <div id="competitorContent" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </div>
+      </div>
+
+      <!-- Wireframe Section -->
+      <div id="wireframeSection" class="hidden mb-6">
+        <div class="output-section">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-peach flex items-center justify-center text-sienna text-sm font-bold">图</div>
+              <h3 class="text-xl font-semibold text-ink">低保真交互效果图</h3>
+            </div>
+            <button onclick="exportAllWireframes()" class="btn-pill btn-pill-ghost text-sm flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              导出全部 PNG
+            </button>
+          </div>
+          <div id="wireframeSelector" class="flex flex-wrap gap-2 mb-4"></div>
+          <div id="wireframeContainer" class="grid grid-cols-1 xl:grid-cols-2 gap-6"></div>
+        </div>
+      </div>
+
+      <!-- Structured Output -->
+      <div id="structuredOutput" class="space-y-4"></div>
+
+      <!-- Raw Output (hidden by default) -->
+      <div id="rawOutput" class="hidden mt-6">
+        <div class="output-section">
+          <h3 class="text-lg font-semibold text-ink mb-3">原始输出</h3>
+          <textarea id="outputText" readonly class="w-full h-64 bg-fog rounded-2xl p-4 text-sm text-ink focus:outline-none resize-none custom-scrollbar font-mono leading-relaxed border border-hairline"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- Wireframe Templates (hidden) -->
+    <div id="wireframeTemplates" class="hidden"></div>
+  </div>
+
+  <!-- Toast Status -->
+  <div id="statusToast" class="fixed bottom-6 right-6 hidden toast z-50">
+    <div class="bg-ink text-paper rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl">
+      <div id="statusIcon"></div>
+      <span id="statusText" class="text-sm"></span>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let currentOutput = '';
+    let parsedSections = [];
+    let analyses = JSON.parse(localStorage.getItem('gamePrdAnalyses') || '[]');
+    let uploadedImages = [];
+    let parsedDocText = '';
+    let statusTimeout = null;
+
+    const STEP_TITLES = [
+      '核心设计目标',
+      '功能主干流程',
+      '全部界面清单',
+      '全界面状态枚举',
+      '用户操作行为清单',
+      '跳转逻辑与页面关系',
+      '边界异常场景',
+      '需求缺陷与待确认',
+      '交互设计工作量评估'
+    ];
+
+    const MODEL_CONFIG = {
+      'anthropic:claude-opus-4-3-20261105': { provider: 'anthropic', model: 'claude-opus-4-3-20261105', vision: true, apiVersion: '2023-06-01' },
+      'anthropic:claude-sonnet-4-20261105': { provider: 'anthropic', model: 'claude-sonnet-4-20261105', vision: true, apiVersion: '2023-06-01' },
+      'anthropic:claude-haiku-4-20261105': { provider: 'anthropic', model: 'claude-haiku-4-20261105', vision: true, apiVersion: '2023-06-01' },
+      'anthropic:claude-3-5-sonnet-20241022': { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022', vision: true, apiVersion: '2023-06-01' },
+      'anthropic:claude-3-opus-20240229': { provider: 'anthropic', model: 'claude-3-opus-20240229', vision: true, apiVersion: '2023-06-01' },
+      'openai:gpt-5.5': { provider: 'openai', model: 'gpt-5.5', vision: true },
+      'openai:gpt-4.1': { provider: 'openai', model: 'gpt-4.1', vision: true },
+      'openai:gpt-4o': { provider: 'openai', model: 'gpt-4o', vision: true },
+      'openai:gpt-4o-mini': { provider: 'openai', model: 'gpt-4o-mini', vision: true },
+      'openai:o3-mini': { provider: 'openai', model: 'o3-mini', vision: false },
+      'openai:o1': { provider: 'openai', model: 'o1', vision: false },
+      'google:gemini-2.5-pro': { provider: 'google', model: 'gemini-2.5-pro', vision: true },
+      'google:gemini-2.0-flash': { provider: 'google', model: 'gemini-2.0-flash', vision: true },
+      'google:gemini-1.5-pro': { provider: 'google', model: 'gemini-1.5-pro', vision: true },
+      'aliyun:qwen-vl-max': { provider: 'aliyun', model: 'qwen-vl-max', vision: true },
+      'aliyun:qwen2.5-vl-72b-instruct': { provider: 'aliyun', model: 'qwen2.5-vl-72b-instruct', vision: true },
+      'aliyun:qwen-max': { provider: 'aliyun', model: 'qwen-max', vision: false },
+      'moonshot:kimi-k1-5': { provider: 'moonshot', model: 'kimi-k1-5', vision: false },
+      'moonshot:kimi-k2': { provider: 'moonshot', model: 'kimi-k2', vision: false },
+      'deepseek:deepseek-chat': { provider: 'deepseek', model: 'deepseek-chat', vision: false },
+      'deepseek:deepseek-reasoner': { provider: 'deepseek', model: 'deepseek-reasoner', vision: false },
+      'siliconflow:deepseek-ai/DeepSeek-V3': { provider: 'siliconflow', model: 'deepseek-ai/DeepSeek-V3', vision: false },
+      'siliconflow:deepseek-ai/DeepSeek-R1': { provider: 'siliconflow', model: 'deepseek-ai/DeepSeek-R1', vision: false },
+      'siliconflow:Qwen/Qwen2.5-VL-72B-Instruct': { provider: 'siliconflow', model: 'Qwen/Qwen2.5-VL-72B-Instruct', vision: true },
+      'custom': { provider: 'custom', model: 'default', vision: false }
+    };
+
+    const MODEL_HINTS = {
+      'anthropic:claude-opus-4-3-20261105': 'Anthropic 最强推理模型，适合复杂需求深度拆解，支持图片。',
+      'anthropic:claude-sonnet-4-20261105': 'Anthropic 综合主力模型，结构化输出优秀，支持图片。',
+      'anthropic:claude-haiku-4-20261105': 'Anthropic 快速模型，成本低，支持图片。',
+      'anthropic:claude-3-5-sonnet-20241022': '经过验证的强模型，指令跟随好，支持图片。',
+      'anthropic:claude-3-opus-20240229': '上一代旗舰，推理强，支持图片。',
+      'openai:gpt-5.5': 'OpenAI 最新旗舰，综合能力最强，支持图片。',
+      'openai:gpt-4.1': 'OpenAI 新一代主力模型，支持图片。',
+      'openai:gpt-4o': '成熟多模态模型，视觉和文本都很稳定。',
+      'openai:gpt-4o-mini': '轻量便宜，支持图片，适合快速初筛。',
+      'openai:o3-mini': '推理优化模型，不含视觉能力。',
+      'openai:o1': '深度推理模型，不含视觉能力。',
+      'google:gemini-2.5-pro': '超长上下文 + 视觉，适合超大 Excel/长 PRD。',
+      'google:gemini-2.0-flash': '快速多模态模型，适合长文档。',
+      'google:gemini-1.5-pro': '成熟长上下文模型，支持图片。',
+      'aliyun:qwen-vl-max': '阿里云最强视觉模型，中文图文理解优秀。',
+      'aliyun:qwen2.5-vl-72b-instruct': '通义千问开源视觉模型，中文场景表现好。',
+      'aliyun:qwen-max': '纯文本旗舰，无视觉能力。',
+      'moonshot:kimi-k1-5': '中文长文本优秀，适合纯文字 PRD。',
+      'moonshot:kimi-k2': 'Moonshot 新一代模型，中文长文本强。',
+      'deepseek:deepseek-chat': 'DeepSeek-V3，中文文本强、成本低，无视觉。',
+      'deepseek:deepseek-reasoner': 'DeepSeek-R1 推理模型，适合逻辑深挖，无视觉。',
+      'siliconflow:deepseek-ai/DeepSeek-V3': 'SiliconFlow 托管 DeepSeek-V3，经济实惠。',
+      'siliconflow:deepseek-ai/DeepSeek-R1': 'SiliconFlow 托管 DeepSeek-R1 推理模型。',
+      'siliconflow:Qwen/Qwen2.5-VL-72B-Instruct': 'SiliconFlow 托管 Qwen2.5-VL，支持图片。'
+    };
+
+    const COMPETITOR_DB = {
+      fps: [
+        {
+          name: '三角洲行动',
+          platform: '手游 / PC',
+          interfaces: ['商城主页', '捆绑包详情', '武器皮肤', '角色皮肤', '购买确认'],
+          reasons: '近期最活跃的国产战术射击产品，商城系统完整覆盖装备券、外观、道具三类商品。',
+          learnings: '顶部双货币栏 + 左侧分类导航 + 中央商品大图 + 底部横向推荐卡片的布局；购买流程中强调限时折扣和剩余时间。',
+          risks: '界面信息密度较高，手游端需考虑拇指热区和单手操作适配。'
+        },
+        {
+          name: '暗区突围',
+          platform: '手游',
+          interfaces: ['物资商店', '军需外观商店', '盲盒商店', '装备券兑换'],
+          reasons: '高拟真硬核射击手游，商店系统分层清晰（物资/外观/盲盒），适合学习复杂商品分类。',
+          learnings: '多商店入口采用 Tab 切换而非侧边栏；盲盒/抽奖类商品突出概率与稀有度展示。',
+          risks: '硬核风格可能不适合泛用户产品，UI 偏厚重。'
+        },
+        {
+          name: '使命召唤手游 (CODM)',
+          platform: '手游',
+          interfaces: ['商城主页', '捆绑包详情', '角色皮肤', '武器皮肤', '限时活动'],
+          reasons: '全球化 FPS 手游，商城设计成熟，促销和视觉表现力都很强。',
+          learnings: '左导航 + 中央英雄商品 + 底部商品带的经典 FPS 商城范式；详情页强调 3D 模型预览和价格对比。',
+          risks: '商业化痕迹较重，需根据项目调性取舍。'
+        },
+        {
+          name: 'Valorant',
+          platform: 'PC',
+          interfaces: ['商店主页', '武器皮肤详情', '夜市（折扣活动）', '通行证'],
+          reasons: 'PC 端 FPS 商店设计简洁现代，适合学习高信息密度下的清晰层级。',
+          learnings: '横向时间轴展示每日刷新商品；皮肤详情采用大背景 + 右侧信息面板；折扣信息用色块强调。',
+          risks: 'PC 端布局直接搬到手游会拥挤，需要重新适配。'
+        }
+      ],
+      general: [
+        {
+          name: '原神',
+          platform: '手游 / PC / 主机',
+          interfaces: ['商城/纪行', '祈愿（抽卡）', '礼包详情'],
+          reasons: '跨平台 RPG 商业化设计标杆，商品展示和付费引导成熟。',
+          learnings: '抽卡/礼包界面突出概率、限时、剩余时间；使用大背景图营造氛围。',
+          risks: ' Fantasy 题材视觉风格与 FPS 差异较大，主要借鉴交互结构。'
+        },
+        {
+          name: '王者荣耀',
+          platform: '手游',
+          interfaces: ['商城主页', '英雄/皮肤详情', '限时活动', '礼包'],
+          reasons: '国内 MOBA 头部产品，商店入口和分类导航设计经过大规模验证。',
+          learnings: '顶部 Tab 分类 + 瀑布流商品卡片 + 详情页大图 + 右侧购买操作区。',
+          risks: 'MOBA 用户心智与 FPS 有差异，需验证是否匹配。'
+        }
+      ]
+    };
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      renderHistory();
+      loadApiKey();
+      loadLastModel();
+      setupDragDrop();
+      document.getElementById('fileUpload').addEventListener('change', handleFileUpload);
+      document.getElementById('aiModel').addEventListener('change', handleModelChange);
+      document.getElementById('apiKey').addEventListener('input', validateAIConfig);
+      document.getElementById('prdInput').addEventListener('input', validateAIConfig);
+      validateAIConfig();
+    });
+
+    function scrollToInput() {
+      document.getElementById('mainInput').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function setupDragDrop() {
+      const dropZone = document.getElementById('dropZone');
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false);
+      });
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false);
+      });
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false);
+      });
+      dropZone.addEventListener('drop', handleDrop, false);
+      dropZone.addEventListener('click', () => document.getElementById('fileUpload').click());
+    }
+
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    function handleDrop(e) {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files.length > 0) {
+        const file = files[0];
+        if (isDocumentFile(file)) {
+          processFile(file);
+        } else {
+          showStatus('请上传 TXT / MD / DOCX / Excel 格式的策划文档', 'error');
+        }
+      }
+    }
+
+    function isDocumentFile(file) {
+      const name = file.name.toLowerCase();
+      return name.endsWith('.txt') || name.endsWith('.md') || name.endsWith('.docx') || name.endsWith('.xlsx') || name.endsWith('.xls');
+    }
+
+    function handleModelChange() {
+      const modelKey = document.getElementById('aiModel').value;
+      const hintEl = document.getElementById('modelHint');
+      if (!modelKey) {
+        hintEl.textContent = '';
+        validateAIConfig();
+        return;
+      }
+      hintEl.textContent = (MODEL_HINTS[modelKey] || '') + (MODEL_CONFIG[modelKey]?.vision ? '（支持图片）' : '（不支持图片，文档中的图片将被忽略）');
+      localStorage.setItem('gamePrdAnalyzerModel', modelKey);
+      validateAIConfig();
+    }
+
+    function validateAIConfig() {
+      const modelKey = document.getElementById('aiModel').value;
+      const apiKey = document.getElementById('apiKey').value.trim();
+      const analyzeBtn = document.getElementById('analyzeBtn');
+      const msgEl = document.getElementById('actionValidationMsg');
+
+      const hasInput = (parsedDocText + document.getElementById('prdInput').value).trim().length > 0;
+
+      if (!modelKey || !apiKey) {
+        analyzeBtn.disabled = true;
+        if (hasInput) {
+          msgEl.classList.remove('hidden');
+          if (!modelKey && !apiKey) {
+            msgEl.textContent = '⚠ 请选择 AI 模型并填写 API Key 后，才能开始分析';
+          } else if (!modelKey) {
+            msgEl.textContent = '⚠ 请选择 AI 模型';
+          } else {
+            msgEl.textContent = '⚠ 请填写 API Key';
+          }
+        } else {
+          msgEl.classList.add('hidden');
+        }
+      } else {
+        analyzeBtn.disabled = !hasInput;
+        msgEl.classList.add('hidden');
+      }
+    }
+
+    function loadLastModel() {
+      const lastModel = localStorage.getItem('gamePrdAnalyzerModel');
+      if (lastModel && MODEL_CONFIG[lastModel]) {
+        document.getElementById('aiModel').value = lastModel;
+        handleModelChange();
+      }
+    }
+
+    async function handleFileUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (!isDocumentFile(file)) {
+        showStatus('请上传 TXT / MD / DOCX / Excel 格式的策划文档', 'error');
+        return;
+      }
+      await processFile(file);
+    }
+
+    async function processFile(file) {
+      document.getElementById('fileName').textContent = file.name;
+      document.getElementById('fileInfo').classList.remove('hidden');
+      updateFileStatus('正在解析...', 'processing');
+
+      try {
+        if (file.name.endsWith('.docx')) {
+          const arrayBuffer = await file.arrayBuffer();
+          const result = await mammoth.extractRawText({ arrayBuffer });
+          parsedDocText = result.value;
+          updateFileStatus(`DOCX 解析完成，共 ${parsedDocText.length} 字符`, 'success');
+          showStatus('DOCX 文档解析完成', 'success');
+        } else if (file.name.match(/\.(xlsx|xls)$/)) {
+          await handleExcelUpload(file);
+        } else {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            parsedDocText = event.target.result;
+            updateFileStatus(`文本解析完成，共 ${parsedDocText.length} 字符`, 'success');
+            showStatus('文档解析完成', 'success');
+            validateAIConfig();
+          };
+          reader.readAsText(file);
+          return;
+        }
+      } catch (err) {
+        updateFileStatus('解析失败：' + err.message, 'error');
+        showStatus('文档解析失败：' + err.message, 'error');
+      }
+      validateAIConfig();
+    }
+
+    function updateFileStatus(text, type) {
+      const el = document.getElementById('fileStatus');
+      const dotClass = type === 'processing' ? 'processing' : type === 'success' ? 'success' : type === 'error' ? 'error' : 'pending';
+      const dotColor = type === 'success' ? 'text-emerald-600' : type === 'error' ? 'text-red-500' : type === 'processing' ? 'text-ink' : 'text-ash';
+      el.innerHTML = `<span class="status-dot ${dotClass}"></span><span class="${dotColor}">${text}</span>`;
+    }
+
+    async function handleExcelUpload(file) {
+      showStatus('正在解析 Excel...', 'loading');
+      const data = await file.arrayBuffer();
+
+      const workbook = XLSX.read(data, { type: 'array' });
+      let textContent = '';
+      workbook.SheetNames.forEach(sheetName => {
+        const worksheet = workbook.Sheets[sheetName];
+        textContent += `\n\n=== 工作表: ${sheetName} ===\n`;
+        textContent += XLSX.utils.sheet_to_csv(worksheet);
+      });
+      parsedDocText = textContent.trim();
+
+      try {
+        const zip = await JSZip.loadAsync(data);
+        const imageFiles = [];
+        zip.forEach((relativePath, zipEntry) => {
+          if (relativePath.startsWith('xl/media/') && !zipEntry.dir) {
+            imageFiles.push(zipEntry);
+          }
+        });
+
+        if (imageFiles.length > 0) {
+          uploadedImages = [];
+          for (const imgEntry of imageFiles) {
+            const blob = await imgEntry.async('blob');
+            const type = blob.type || 'image/png';
+            const base64 = await blobToBase64(blob, type);
+            uploadedImages.push({ name: imgEntry.name.split('/').pop(), type, size: blob.size, base64, source: 'excel' });
+          }
+          updateFileStatus(`Excel 解析完成，${parsedDocText.length} 字符，已提取 ${imageFiles.length} 张内嵌图片供 AI 分析`, 'success');
+          showStatus(`Excel 解析完成，已提取 ${imageFiles.length} 张内嵌图片`, 'success');
+        } else {
+          updateFileStatus(`Excel 解析完成，${parsedDocText.length} 字符，未检测到内嵌图片`, 'success');
+          showStatus('Excel 文字解析完成，未检测到内嵌图片', 'success');
+        }
+      } catch (err) {
+        updateFileStatus(`Excel 文字解析完成，图片提取失败：${err.message}`, 'error');
+        showStatus('Excel 文字解析完成，图片提取失败：' + err.message, 'error');
+      }
+    }
+
+    function blobToBase64(blob, type) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.readAsDataURL(new Blob([blob], { type }));
+      });
+    }
+
+    function removeFile() {
+      document.getElementById('fileUpload').value = '';
+      document.getElementById('fileInfo').classList.add('hidden');
+      document.getElementById('fileName').textContent = '';
+      parsedDocText = '';
+      uploadedImages = [];
+      validateAIConfig();
+    }
+
+    function toggleManualInput() {
+      const area = document.getElementById('manualInputArea');
+      const icon = document.getElementById('manualToggleIcon');
+      const text = document.getElementById('manualToggleText');
+      area.classList.toggle('hidden');
+      if (area.classList.contains('hidden')) {
+        icon.style.transform = 'rotate(0deg)';
+        text.textContent = '手动粘贴文本';
+      } else {
+        icon.style.transform = 'rotate(180deg)';
+        text.textContent = '收起手动输入';
+        document.getElementById('prdInput').focus();
+      }
+    }
+
+    function toggleAdvancedConfig() {
+      const body = document.getElementById('advancedConfigBody');
+      const icon = document.getElementById('advancedConfigIcon');
+      body.classList.toggle('hidden');
+      icon.style.transform = body.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+    }
+
+    function loadExample() {
+      const example = `【系统名称】第一人称射击游戏商城系统
+
+【设计目标】
+为玩家提供主题捆绑包、角色皮肤、武器皮肤的浏览、预览与购买能力；通过热销推荐和限时折扣促进付费转化。
+
+【核心规则】
+1. 玩家从大厅顶部入口进入商城主页。
+2. 商城主页左侧为分类导航：主页、热销推荐、角色外观、武器外观、礼包、道具。
+3. 中央区域展示当前选中分类的主推商品大图，附带限时折扣标签和剩余时间。
+4. 底部横向滚动展示同类商品卡片，含缩略图、名称、折扣信息。
+5. 点击商品进入详情页：左侧/中央大图预览，右侧信息区含名称、包含物品列表、原价/折扣价、购买按钮。
+6. 点击购买弹出二次确认，确认后扣除货币并发放物品。
+7. 商品类型包括：主题捆绑包（含角色+武器+挂件等）、角色皮肤、武器皮肤。
+
+【界面描述】
+- 商城主页：顶部货币栏 + 左侧导航 + 中央英雄商品 + 底部商品带
+- 商品详情页：大图预览 + 包含物品缩略图列表 + 价格信息 + 购买按钮
+- 购买确认弹窗：商品名、价格、支付方式、确认/取消
+
+【双端要求】
+- 手游分辨率 1920x1080，PC 分辨率 2560x1440
+- 双端功能保持一致，布局根据平台适配
+`;
+      document.getElementById('prdInput').value = example;
+      const area = document.getElementById('manualInputArea');
+      if (area.classList.contains('hidden')) toggleManualInput();
+      validateAIConfig();
+      showStatus('已加载示例文本', 'success');
+    }
+
+    function clearInput() {
+      document.getElementById('prdInput').value = '';
+      removeFile();
+      showStatus('已清空', 'info');
+    }
+
+    function getPrdText() {
+      return (parsedDocText + '\n\n' + document.getElementById('prdInput').value).trim();
+    }
+
+    function buildPrompt(prdText) {
+      const genre = document.getElementById('gameGenre').value;
+      const depth = document.getElementById('analysisDepth').value;
+      const platform = document.getElementById('targetPlatform').value;
+
+      const depthInstructions = {
+        strict: '严格模式：禁止任何主观脑补，所有原文未写明的内容必须标记【需求缺失，需与策划确认】。对每个界面、状态、异常场景都进行穷尽式审查。',
+        balanced: '平衡模式：基于原文信息提取，对交互推演必要补充项进行合理推演但明确标注，对不确定内容标记待确认。',
+        fast: '快速模式：仅提取原文明确写明的信息，不做过多推演，适用于快速初筛。'
+      };
+
+      const genreHints = {
+        general: '',
+        rpg: '该系统可能涉及角色养成、装备、技能等RPG常见模块，注意结合RPG的数值成长和长期目标。',
+        slg: '该系统可能涉及资源管理、联盟社交、战报等SLG模块，注意策略性和异步交互。',
+        card: '该系统可能涉及抽卡、卡组、卡牌养成等模块，注意概率展示和付费体验。',
+        casual: '该系统可能节奏轻快，注意降低认知负担和操作步骤。',
+        moba: '该系统可能涉及匹配、排行榜、英雄等模块，注意实时竞技体验。',
+        fps: '该系统可能涉及枪械、背包、战绩等模块，注意信息密度和快速操作。',
+        simulation: '该系统可能涉及建设、经营、订单等模块，注意资源循环和长期目标。'
+      };
+
+      const imageNote = uploadedImages.length > 0
+        ? `\n\n注意：本次分析还包含 ${uploadedImages.length} 张参考图片（从 Excel 提取或单独上传的流程图/界面草图/示意图等），请结合图片中的信息一起分析。图片中若包含界面结构、布局、状态、流程关系等信息，请纳入第3、4、6步的输出。`
+        : '';
+
+      return `你是资深游戏交互设计师，拥有完整游戏研发全链路协作经验，熟悉系统策划、UI设计、动效、客户端开发、测试岗位的工作标准与交付要求。
+
+接下来我会粘贴游戏系统策划方案/PRD文本，请你严格站在游戏交互设计师的视角，按照下方固定结构完整解析。
+
+## 核心规则
+1. 禁止主观脑补新增玩法规则，只基于原文信息提取；原文未写明的内容，统一标记【需求缺失，需与策划确认】
+2. 严格区分「原文明确写明」和「交互推演必要补充项」，推演内容必须加粗标注「【推演补充】」
+3. 所有待确认问题单独汇总到第 8 节，便于直接用于需求对齐沟通
+4. 输出使用游戏行业专业术语，结构化呈现，可直接归档进交互设计文档
+5. 游戏品类：${genre} ${genreHints[genre] || ''}
+6. 目标平台：${platform === 'mobile' ? '手游/App，需考虑拇指热区、单手操作、断网重连、异形屏适配' : platform === 'pc' ? 'PC/主机，需考虑键鼠/手柄操作、窗口化、高分辨率' : '多端适配，需考虑不同输入方式和屏幕尺寸'}
+7. 分析深度：${depthInstructions[depth]}${imageNote}
+
+## 输出格式强制要求
+- 必须严格按以下 9 个编号顺序输出，不得跳过、合并或调整顺序
+- 每个大节标题使用「### N. 标题名」格式
+- 每小节内部使用 bullet points，一条一个要点，避免大段连续文字
+- 关键术语、界面名称、状态名称、控件名称使用 **加粗**
+- 原文缺失或不确定的内容使用 【需求缺失，需与策划确认】 标记
+- 推演补充内容使用 **【推演补充】** 标记
+- 不要输出"综上所述""总之"希望对你有帮助"等总结性废话
+- 不要输出 emoji、装饰性符号
+
+### 1. 核心设计目标梳理
+- 该系统要解决玩家的什么核心问题，系统核心价值是什么
+- 目标玩家群体、核心触发场景（主城/战斗内/结算/离线推送等）
+- 系统核心业务目标（留存、付费、资源消耗、社交活跃等）
+- 潜在设计矛盾：需求内是否存在目标自相矛盾、逻辑冲突的点
+
+### 2. 功能主干流程
+1. 正向标准操作主干路径
+2. 可选分支路径
+3. 终止/退出路径
+每条路径使用「步骤序号 + 操作 + 结果」格式
+
+### 3. 全部界面清单
+按类型分类：常驻主页面｜弹窗｜浮层气泡｜二次确认弹窗｜Toast提示｜底部弹窗｜独立子页面
+每个界面统一格式：
+- **界面名称**：xxx
+- 触发来源：xxx
+- 关闭方式：xxx
+- 阻断类型：阻断 / 非阻断
+- 所属模块：xxx
+
+### 4. 全界面状态枚举
+针对第 3 节的每个界面，穷举所有必须的展示状态：
+- 默认常态
+- 加载状态（网络请求中）
+- 空数据状态
+- 满上限/达到阈值状态
+- 操作禁用状态（条件不满足，控件灰态）
+- 操作成功状态
+- 操作失败状态（区分不同失败原因）
+- 未解锁/离线状态
+原文未定义的状态，标注【策划未定义，交互设计需补充确认】
+
+### 5. 用户操作行为清单
+梳理页面内所有可交互控件的操作（点击、长按、滑动、切换Tab、下拉刷新、输入等），每条操作标注：
+- 操作对象：**控件名称**
+- 操作方式：点击/长按/滑动等
+- 触发前置条件
+- 操作后产生的结果
+
+### 6. 跳转逻辑与页面关系
+- 界面间跳转关系
+- 弹窗嵌套规则
+- 是否支持多层弹窗叠加
+- 返回键层级处理逻辑
+建议使用层级描述（如：大厅 → 签到面板 → 奖励详情弹窗）
+
+### 7. 边界异常场景枚举
+主动推演以下维度的异常场景，原文无说明则标记为待确认：
+1. 弱网/网络断开重连
+2. 服务器报错、错误码对应的界面表现
+3. 连续重复点击、快速操作的处理
+4. 操作过程中被被动弹窗打断（活动推送、升级弹窗、私聊等）
+5. 玩家主动切后台、退出页面、断线重连后的状态恢复
+6. 资源不足、条件不满足等各类限制场景
+
+### 8. 需求缺陷与待确认清单
+逐条罗列，每条格式：
+- **问题 N**：问题描述
+- 影响范围：xxx
+- 建议处理方式：xxx
+
+### 9. 交互设计工作量前置评估
+- 预估原型页面数量与状态分支复杂度
+- 是否涉及复杂动效/状态机
+- 核心沟通风险点
+- 建议排期（交互设计侧）
+
+---
+
+【策划文档原文】
+${prdText || '【用户未粘贴内容】'}
+`;
+    }
+
+    function generatePrompt() {
+      const prdText = getPrdText();
+      if (!prdText) {
+        showStatus('请先上传或粘贴策划文档', 'error');
+        return;
+      }
+      const prompt = buildPrompt(prdText);
+      navigator.clipboard.writeText(prompt).then(() => {
+        showStatus('分析 Prompt 已复制到剪贴板，可粘贴到 WorkBuddy 中使用', 'success');
+      });
+    }
+
+    async function analyzeWithAI() {
+      const prdText = getPrdText();
+      if (!prdText) {
+        showStatus('请先上传或粘贴策划文档', 'error');
+        return;
+      }
+
+      const modelKey = document.getElementById('aiModel').value;
+      if (!modelKey) {
+        showStatus('请先选择 AI 模型', 'error');
+        return;
+      }
+
+      const apiKey = document.getElementById('apiKey').value.trim();
+      if (!apiKey) {
+        showStatus('请填写 API Key', 'error');
+        return;
+      }
+      localStorage.setItem('gamePrdAnalyzerApiKey', apiKey);
+
+      const prompt = buildPrompt(prdText);
+
+      showStatus('正在调用 AI 分析，请稍候...', 'loading');
+
+      try {
+        const result = await callLLM(modelKey, apiKey, prompt);
+        displayOutput(result);
+        saveAnalysis(prdText, result);
+        showStatus('AI 分析完成', 'success');
+      } catch (err) {
+        showStatus('AI 调用失败：' + err.message, 'error');
+        console.error(err);
+      }
+    }
+
+    async function callLLM(modelKey, apiKey, prompt) {
+      const config = MODEL_CONFIG[modelKey];
+      if (!config) throw new Error('未知模型配置');
+
+      const hasImages = uploadedImages.length > 0;
+      if (hasImages && !config.vision) {
+        showStatus('当前模型不支持图片，已忽略文档中的图片', 'info');
+      }
+      const includeImages = hasImages && config.vision;
+
+      let url, body, headers;
+
+      switch(config.provider) {
+        case 'anthropic':
+          url = 'https://api.anthropic.com/v1/messages';
+          const claudeContent = [{ type: 'text', text: prompt }];
+          if (includeImages) {
+            uploadedImages.forEach(img => {
+              const base64Data = img.base64.split(',')[1];
+              claudeContent.push({ type: 'image', source: { type: 'base64', media_type: img.type || 'image/png', data: base64Data } });
+            });
+          }
+          body = { model: config.model, max_tokens: 8192, messages: [{ role: 'user', content: claudeContent }] };
+          headers = { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': config.apiVersion || '2023-06-01' };
+          break;
+        case 'openai':
+          url = 'https://api.openai.com/v1/chat/completions';
+          const openaiContent = [{ type: 'text', text: prompt }];
+          if (includeImages) {
+            uploadedImages.forEach(img => {
+              openaiContent.push({ type: 'image_url', image_url: { url: img.base64, detail: 'auto' } });
+            });
+          }
+          body = { model: config.model, messages: [{ role: 'user', content: openaiContent }], temperature: 0.3, max_tokens: 4000 };
+          headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
+          break;
+        case 'google':
+          url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${apiKey}`;
+          const geminiParts = [{ text: prompt }];
+          if (includeImages) {
+            uploadedImages.forEach(img => {
+              const base64Data = img.base64.split(',')[1];
+              geminiParts.push({ inline_data: { mime_type: img.type || 'image/png', data: base64Data } });
+            });
+          }
+          body = { contents: [{ parts: geminiParts }] };
+          headers = { 'Content-Type': 'application/json' };
+          break;
+        case 'aliyun':
+          url = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
+          const qwenMessages = [{ role: 'user', content: [{ text: prompt }] }];
+          if (includeImages) {
+            uploadedImages.forEach(img => {
+              const base64Data = img.base64.split(',')[1];
+              qwenMessages[0].content.push({ image: base64Data });
+            });
+          }
+          body = { model: config.model, messages: qwenMessages };
+          headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
+          break;
+        case 'moonshot':
+          url = 'https://api.moonshot.cn/v1/chat/completions';
+          body = { model: config.model, messages: [{ role: 'user', content: prompt }], temperature: 0.3, max_tokens: 4000 };
+          headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
+          break;
+        case 'deepseek':
+          url = 'https://api.deepseek.com/chat/completions';
+          body = { model: config.model, messages: [{ role: 'user', content: prompt }], temperature: 0.3, max_tokens: 4000 };
+          headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
+          break;
+        case 'siliconflow':
+          url = 'https://api.siliconflow.cn/v1/chat/completions';
+          const sfContent = [{ type: 'text', text: prompt }];
+          if (includeImages) {
+            uploadedImages.forEach(img => {
+              sfContent.push({ type: 'image_url', image_url: { url: img.base64, detail: 'auto' } });
+            });
+          }
+          body = { model: config.model, messages: [{ role: 'user', content: sfContent }], temperature: 0.3, max_tokens: 4000 };
+          headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
+          break;
+        case 'custom':
+          url = prompt('请输入自定义 API 地址');
+          if (!url) throw new Error('未提供自定义 API 地址');
+          body = { model: config.model, messages: [{ role: 'user', content: prompt }], temperature: 0.3, max_tokens: 4000 };
+          headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
+          break;
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`API 错误 (${response.status}): ${error}`);
+      }
+
+      const data = await response.json();
+      return extractContent(config.provider, data);
+    }
+
+    function extractContent(provider, data) {
+      switch(provider) {
+        case 'anthropic':
+          return data.content[0].text;
+        case 'google':
+          return data.candidates[0].content.parts[0].text;
+        case 'aliyun':
+          return data.output.choices[0].message.content;
+        default:
+          return data.choices[0].message.content;
+      }
+    }
+
+    function displayOutput(text) {
+      currentOutput = text;
+      document.getElementById('outputText').value = text;
+      document.getElementById('outputSection').classList.remove('hidden');
+
+      parsedSections = parseSections(text);
+      renderStepNav();
+      renderStructuredOutput();
+      renderCompetitors();
+      renderWireframeSelector();
+
+      document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function parseSections(text) {
+      const sections = [];
+      const regex = /###\s*(\d+)\.\s*([^\n]+)\n([\s\S]*?)(?=###\s*\d+\.|$)/g;
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        sections.push({
+          number: parseInt(match[1]),
+          title: match[2].trim(),
+          content: match[3].trim()
+        });
+      }
+      if (sections.length === 0) {
+        sections.push({
+          number: 0,
+          title: '分析输出',
+          content: text
+        });
+      }
+      return sections;
+    }
+
+    function renderStepNav() {
+      const nav = document.getElementById('stepNav');
+      nav.innerHTML = parsedSections.map((s, idx) => `
+        <button onclick="scrollToSection(${s.number})" class="step-nav-item ${idx === 0 ? 'active' : ''}" data-step="${s.number}">
+          ${s.number}. ${s.title.split(' ')[0]}
+        </button>
+      `).join('');
+    }
+
+    function scrollToSection(stepNumber) {
+      const el = document.getElementById(`section-${stepNumber}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.querySelectorAll('.step-nav-item').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.querySelector(`.step-nav-item[data-step="${stepNumber}"]`);
+        if (activeBtn) activeBtn.classList.add('active');
+      }
+    }
+
+    function renderStructuredOutput() {
+      const container = document.getElementById('structuredOutput');
+      container.innerHTML = parsedSections.map(s => `
+        <div id="section-${s.number}" class="output-section">
+          <div class="flex items-start justify-between gap-4 mb-4">
+            <div class="flex items-center gap-3">
+              <span class="step-badge step-badge-active">${s.number}</span>
+              <h3 class="output-section-title">${escapeHtml(s.title)}</h3>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <button onclick="copySection(${s.number})" class="text-xs text-slate hover:text-ink font-medium px-2 py-1 rounded-lg hover:bg-mist transition-colors">复制本节</button>
+              <button onclick="toggleSection(${s.number})" class="text-xs text-slate hover:text-ink font-medium px-2 py-1 rounded-lg hover:bg-mist transition-colors">
+                <span id="toggle-text-${s.number}">折叠</span>
+              </button>
+            </div>
+          </div>
+          <div id="section-body-${s.number}" class="text-[15px] leading-relaxed text-ink space-y-2">
+            ${formatSectionContent(s.content)}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function formatSectionContent(content) {
+      return content
+        .split('\n')
+        .map(line => {
+          if (!line.trim()) return '';
+          // Handle bullet points
+          if (/^[-*•]\s+/.test(line)) {
+            const text = line.replace(/^[-*•]\s+/, '');
+            return `<div class="flex items-start gap-2 py-1"><span class="text-sienna mt-1.5">•</span><div class="flex-1">${highlightText(escapeHtml(text))}</div></div>`;
+          }
+          // Handle numbered lists
+          if (/^\d+\.\s+/.test(line)) {
+            return `<div class="flex items-start gap-2 py-1"><span class="text-slate text-sm mt-0.5 font-medium">${line.match(/^\d+/)[0]}.</span><div class="flex-1">${highlightText(escapeHtml(line.replace(/^\d+\.\s+/, '')))}</div></div>`;
+          }
+          // Handle bold markdown
+          return `<div class="py-1">${highlightText(escapeHtml(line))}</div>`;
+        })
+        .filter(line => line)
+        .join('');
+    }
+
+    function highlightText(text) {
+      // Bold markdown
+      text = text.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-ink font-semibold">$1</strong>');
+      // Missing tag
+      text = text.replace(/（需求缺失，需与策划确认）/g, '<span class="missing-tag">需求缺失，需与策划确认</span>');
+      text = text.replace(/【需求缺失，需与策划确认】/g, '<span class="missing-tag">需求缺失，需与策划确认</span>');
+      text = text.replace(/\[需求缺失，需与策划确认\]/g, '<span class="missing-tag">需求缺失，需与策划确认</span>');
+      // Supplement tag
+      text = text.replace(/（推演补充）/g, '<span class="supplement-tag">推演补充</span>');
+      text = text.replace(/【推演补充】/g, '<span class="supplement-tag">推演补充</span>');
+      text = text.replace(/\[推演补充\]/g, '<span class="supplement-tag">推演补充</span>');
+      return text;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function copySection(stepNumber) {
+      const section = parsedSections.find(s => s.number === stepNumber);
+      if (!section) return;
+      const text = `### ${section.number}. ${section.title}\n\n${section.content}`;
+      navigator.clipboard.writeText(text).then(() => {
+        showStatus('本节已复制', 'success');
+      });
+    }
+
+    function toggleSection(stepNumber) {
+      const body = document.getElementById(`section-body-${stepNumber}`);
+      const text = document.getElementById(`toggle-text-${stepNumber}`);
+      body.classList.toggle('hidden');
+      text.textContent = body.classList.contains('hidden') ? '展开' : '折叠';
+    }
+
+    function renderCompetitors() {
+      const genre = document.getElementById('gameGenre').value;
+      const db = COMPETITOR_DB[genre] || COMPETITOR_DB.fps.concat(COMPETITOR_DB.general);
+      const section = document.getElementById('competitorSection');
+      const content = document.getElementById('competitorContent');
+
+      if (!db || db.length === 0) {
+        section.classList.add('hidden');
+        return;
+      }
+
+      section.classList.remove('hidden');
+      content.innerHTML = db.slice(0, 4).map(c => `
+        <div class="bg-fog rounded-2xl p-5 border border-hairline">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-semibold text-ink">${c.name}</h4>
+            <span class="text-xs text-slate bg-paper px-2 py-0.5 rounded-full border border-hairline">${c.platform}</span>
+          </div>
+          <p class="text-sm text-slate mb-3">${c.reasons}</p>
+          <div class="space-y-2 text-sm">
+            <div><span class="text-ink font-medium">可借鉴：</span><span class="text-slate">${c.learnings}</span></div>
+            <div><span class="text-ink font-medium">注意：</span><span class="text-slate">${c.risks}</span></div>
+          </div>
+          <div class="mt-3 flex flex-wrap gap-1.5">
+            ${c.interfaces.map(i => `<span class="text-xs text-slate bg-paper px-2 py-0.5 rounded-full border border-hairline">${i}</span>`).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderWireframeSelector() {
+      const section = document.getElementById('wireframeSection');
+      const selector = document.getElementById('wireframeSelector');
+
+      // Extract interfaces from section 3
+      const section3 = parsedSections.find(s => s.number === 3);
+      if (!section3) {
+        section.classList.add('hidden');
+        return;
+      }
+
+      const interfaceNames = extractInterfaceNames(section3.content);
+      if (interfaceNames.length === 0) {
+        section.classList.add('hidden');
+        return;
+      }
+
+      section.classList.remove('hidden');
+      selector.innerHTML = interfaceNames.map((name, idx) => `
+        <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-fog border border-hairline text-sm cursor-pointer hover:bg-mist transition-colors">
+          <input type="checkbox" class="wireframe-checkbox rounded border-ash text-ink focus:ring-ink" value="${escapeHtml(name)}" ${idx < 4 ? 'checked' : ''}>
+          <span class="text-ink">${escapeHtml(name)}</span>
+        </label>
+      `).join('');
+
+      // Bind change events
+      selector.querySelectorAll('.wireframe-checkbox').forEach(cb => {
+        cb.addEventListener('change', renderWireframes);
+      });
+
+      renderWireframes();
+    }
+
+    function extractInterfaceNames(content) {
+      const names = [];
+      const regex = /\*\*界面名称\*\*[:：]\s*([^\n]+)/g;
+      let match;
+      while ((match = regex.exec(content)) !== null) {
+        names.push(match[1].trim());
+      }
+      if (names.length === 0) {
+        // fallback: try to find any bold text that looks like interface name
+        const lines = content.split('\n');
+        lines.forEach(line => {
+          const m = line.match(/\*\*([^*]+(?:页面|界面|弹窗|面板|浮层))\*\*/);
+          if (m && !names.includes(m[1])) names.push(m[1]);
+        });
+      }
+      return names.slice(0, 8);
+    }
+
+    function renderWireframes() {
+      const container = document.getElementById('wireframeContainer');
+      const checked = Array.from(document.querySelectorAll('.wireframe-checkbox:checked')).map(cb => cb.value);
+      const platform = document.getElementById('targetPlatform').value;
+      const isPC = platform === 'pc';
+
+      if (checked.length === 0) {
+        container.innerHTML = '<p class="text-sm text-slate col-span-full">请至少选择一个界面生成效果图</p>';
+        return;
+      }
+
+      container.innerHTML = checked.map(name => `
+        <div class="bg-fog rounded-2xl p-4 border border-hairline">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="font-semibold text-ink text-sm">${escapeHtml(name)}</h4>
+            <button onclick="exportWireframe('${encodeURIComponent(name)}')" class="text-xs text-slate hover:text-ink font-medium px-2 py-1 rounded-lg hover:bg-mist transition-colors">导出 PNG</button>
+          </div>
+          <div class="overflow-auto custom-scrollbar">
+            <div id="wf-${encodeURIComponent(name)}" class="wireframe-wrapper inline-block">
+              ${generateWireframeHTML(name, isPC)}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function generateWireframeHTML(name, isPC) {
+      const lower = name.toLowerCase();
+      if (lower.includes('详情') || lower.includes('detail')) {
+        return isPC ? wireframeDetailPC(name) : wireframeDetailMobile(name);
+      }
+      if (lower.includes('确认') || lower.includes('二次')) {
+        return isPC ? wireframeConfirmPC(name) : wireframeConfirmMobile(name);
+      }
+      return isPC ? wireframeHomePC(name) : wireframeHomeMobile(name);
+    }
+
+    function wireframeHomeMobile(name) {
+      return `
+        <div class="wireframe-device">
+          <div class="wireframe-screen" style="width:300px;height:533px;">
+            <!-- Top Bar -->
+            <div style="height:40px;background:#1e1e22;display:flex;align-items:center;justify-content:space-between;padding:0 14px;">
+              <div style="width:80px;height:14px;background:#444;border-radius:4px;"></div>
+              <div style="display:flex;gap:10px;">
+                <div style="width:28px;height:14px;background:#555;border-radius:7px;"></div>
+                <div style="width:28px;height:14px;background:#555;border-radius:7px;"></div>
+              </div>
+            </div>
+            <!-- Left Nav -->
+            <div style="position:absolute;left:0;top:40px;bottom:90px;width:54px;background:#18181c;display:flex;flex-direction:column;align-items:center;padding-top:12px;gap:14px;">
+              <div style="width:34px;height:34px;background:#fbe1d1;border-radius:8px;"></div>
+              <div style="width:28px;height:28px;background:#333;border-radius:6px;"></div>
+              <div style="width:28px;height:28px;background:#333;border-radius:6px;"></div>
+              <div style="width:28px;height:28px;background:#333;border-radius:6px;"></div>
+              <div style="width:28px;height:28px;background:#333;border-radius:6px;"></div>
+            </div>
+            <!-- Hero -->
+            <div style="margin-left:54px;padding:14px;">
+              <div style="width:100%;height:220px;background:linear-gradient(135deg,#2a2a30,#1a1a1e);border-radius:12px;position:relative;">
+                <div style="position:absolute;top:10px;left:10px;background:#fbe1d1;color:#5d2a1a;padding:2px 8px;border-radius:4px;font-size:10px;">限时折扣</div>
+                <div style="position:absolute;bottom:14px;left:14px;">
+                  <div style="width:120px;height:16px;background:#fff;border-radius:4px;margin-bottom:6px;"></div>
+                  <div style="width:80px;height:12px;background:#aaa;border-radius:4px;"></div>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:12px;">
+                <div style="flex:1;height:36px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#17191c;font-size:12px;font-weight:600;">试用</div>
+                <div style="flex:1;height:36px;background:#fbe1d1;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#5d2a1a;font-size:12px;font-weight:600;">前往征集</div>
+              </div>
+            </div>
+            <!-- Bottom Cards -->
+            <div style="position:absolute;bottom:0;left:0;right:0;height:90px;background:#141418;padding:10px 14px;display:flex;gap:8px;overflow-x:auto;">
+              <div style="min-width:96px;height:70px;background:#222;border-radius:8px;"></div>
+              <div style="min-width:96px;height:70px;background:#fbe1d1;border-radius:8px;"></div>
+              <div style="min-width:96px;height:70px;background:#222;border-radius:8px;"></div>
+              <div style="min-width:96px;height:70px;background:#222;border-radius:8px;"></div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function wireframeHomePC(name) {
+      return `
+        <div class="wireframe-screen-pc" style="width:480px;height:270px;">
+          <!-- Top Bar -->
+          <div style="height:36px;background:#1e1e22;display:flex;align-items:center;justify-content:space-between;padding:0 16px;">
+            <div style="width:120px;height:14px;background:#444;border-radius:4px;"></div>
+            <div style="display:flex;gap:12px;">
+              <div style="width:60px;height:14px;background:#555;border-radius:7px;"></div>
+              <div style="width:60px;height:14px;background:#555;border-radius:7px;"></div>
+            </div>
+          </div>
+          <div style="display:flex;height:calc(100% - 36px);">
+            <!-- Left Nav -->
+            <div style="width:70px;background:#18181c;display:flex;flex-direction:column;align-items:center;padding-top:16px;gap:16px;">
+              <div style="width:40px;height:40px;background:#fbe1d1;border-radius:8px;"></div>
+              <div style="width:32px;height:32px;background:#333;border-radius:6px;"></div>
+              <div style="width:32px;height:32px;background:#333;border-radius:6px;"></div>
+              <div style="width:32px;height:32px;background:#333;border-radius:6px;"></div>
+            </div>
+            <!-- Main -->
+            <div style="flex:1;padding:16px;display:flex;flex-direction:column;">
+              <div style="flex:1;background:linear-gradient(135deg,#2a2a30,#1a1a1e);border-radius:12px;position:relative;">
+                <div style="position:absolute;top:12px;left:12px;background:#fbe1d1;color:#5d2a1a;padding:3px 10px;border-radius:4px;font-size:11px;">限时折扣 -50%</div>
+                <div style="position:absolute;bottom:16px;left:16px;">
+                  <div style="width:160px;height:18px;background:#fff;border-radius:4px;margin-bottom:8px;"></div>
+                  <div style="width:100px;height:14px;background:#aaa;border-radius:4px;"></div>
+                </div>
+                <div style="position:absolute;bottom:16px;right:16px;display:flex;gap:8px;">
+                  <div style="width:80px;height:32px;background:#fff;border-radius:6px;"></div>
+                  <div style="width:80px;height:32px;background:#fbe1d1;border-radius:6px;"></div>
+                </div>
+              </div>
+              <div style="height:64px;margin-top:12px;display:flex;gap:8px;">
+                <div style="flex:1;background:#222;border-radius:8px;"></div>
+                <div style="flex:1;background:#fbe1d1;border-radius:8px;"></div>
+                <div style="flex:1;background:#222;border-radius:8px;"></div>
+                <div style="flex:1;background:#222;border-radius:8px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function wireframeDetailMobile(name) {
+      return `
+        <div class="wireframe-device">
+          <div class="wireframe-screen" style="width:300px;height:533px;">
+            <div style="height:40px;background:#1e1e22;display:flex;align-items:center;justify-content:space-between;padding:0 14px;">
+              <div style="width:20px;height:20px;background:#555;border-radius:4px;"></div>
+              <div style="width:80px;height:14px;background:#444;border-radius:4px;"></div>
+              <div style="width:20px;height:20px;background:#555;border-radius:4px;"></div>
+            </div>
+            <div style="padding:14px;">
+              <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <div style="background:#fbe1d1;color:#5d2a1a;padding:2px 8px;border-radius:4px;font-size:10px;">限时折扣</div>
+                <div style="background:#333;color:#aaa;padding:2px 8px;border-radius:4px;font-size:10px;">剩 1 天</div>
+              </div>
+              <div style="width:100%;height:180px;background:linear-gradient(135deg,#2a2a30,#1a1a1e);border-radius:12px;margin-bottom:14px;"></div>
+              <div style="width:70%;height:18px;background:#fff;border-radius:4px;margin-bottom:8px;"></div>
+              <div style="width:50%;height:12px;background:#aaa;border-radius:4px;margin-bottom:14px;"></div>
+              <div style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;">
+                <div style="min-width:44px;height:44px;background:#fbe1d1;border-radius:6px;"></div>
+                <div style="min-width:44px;height:44px;background:#333;border-radius:6px;"></div>
+                <div style="min-width:44px;height:44px;background:#333;border-radius:6px;"></div>
+                <div style="min-width:44px;height:44px;background:#333;border-radius:6px;"></div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:20px;padding-top:14px;border-top:1px solid #333;">
+                <div>
+                  <div style="width:60px;height:12px;background:#aaa;border-radius:4px;margin-bottom:4px;"></div>
+                  <div style="display:flex;align-items:baseline;gap:6px;">
+                    <div style="width:40px;height:18px;background:#fbe1d1;border-radius:4px;"></div>
+                    <div style="width:40px;height:12px;background:#555;border-radius:4px;"></div>
+                  </div>
+                </div>
+                <div style="width:100px;height:38px;background:#fbe1d1;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#5d2a1a;font-size:12px;font-weight:600;">立即购买</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function wireframeDetailPC(name) {
+      return `
+        <div class="wireframe-screen-pc" style="width:480px;height:270px;">
+          <div style="height:36px;background:#1e1e22;display:flex;align-items:center;padding:0 16px;">
+            <div style="width:20px;height:20px;background:#555;border-radius:4px;margin-right:12px;"></div>
+            <div style="width:100px;height:14px;background:#444;border-radius:4px;"></div>
+          </div>
+          <div style="display:flex;height:calc(100% - 36px);padding:16px;gap:16px;">
+            <div style="flex:1.2;background:linear-gradient(135deg,#2a2a30,#1a1a1e);border-radius:12px;position:relative;">
+              <div style="position:absolute;top:10px;left:10px;background:#fbe1d1;color:#5d2a1a;padding:2px 8px;border-radius:4px;font-size:10px;">限时折扣</div>
+            </div>
+            <div style="flex:0.8;display:flex;flex-direction:column;">
+              <div style="width:80%;height:18px;background:#fff;border-radius:4px;margin-bottom:8px;"></div>
+              <div style="width:60%;height:12px;background:#aaa;border-radius:4px;margin-bottom:12px;"></div>
+              <div style="display:flex;gap:6px;margin-bottom:12px;">
+                <div style="width:40px;height:40px;background:#fbe1d1;border-radius:6px;"></div>
+                <div style="width:40px;height:40px;background:#333;border-radius:6px;"></div>
+                <div style="width:40px;height:40px;background:#333;border-radius:6px;"></div>
+              </div>
+              <div style="margin-top:auto;">
+                <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:10px;">
+                  <div style="width:50px;height:20px;background:#fbe1d1;border-radius:4px;"></div>
+                  <div style="width:50px;height:12px;background:#555;border-radius:4px;"></div>
+                </div>
+                <div style="width:100%;height:36px;background:#fbe1d1;border-radius:8px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function wireframeConfirmMobile(name) {
+      return `
+        <div class="wireframe-device">
+          <div class="wireframe-screen" style="width:300px;height:533px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);">
+            <div style="width:260px;background:#1e1e22;border-radius:16px;padding:18px;">
+              <div style="width:60%;height:16px;background:#fff;border-radius:4px;margin:0 auto 14px;"></div>
+              <div style="width:100%;height:80px;background:#222;border-radius:10px;margin-bottom:14px;"></div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:16px;">
+                <div style="width:80px;height:12px;background:#555;border-radius:4px;"></div>
+                <div style="width:60px;height:14px;background:#fbe1d1;border-radius:4px;"></div>
+              </div>
+              <div style="display:flex;gap:10px;">
+                <div style="flex:1;height:36px;background:#333;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:12px;">取消</div>
+                <div style="flex:1;height:36px;background:#fbe1d1;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#5d2a1a;font-size:12px;font-weight:600;">确认购买</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function wireframeConfirmPC(name) {
+      return `
+        <div class="wireframe-screen-pc" style="width:480px;height:270px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);">
+          <div style="width:320px;background:#1e1e22;border-radius:16px;padding:20px;border:1px solid #333;">
+            <div style="width:50%;height:18px;background:#fff;border-radius:4px;margin:0 auto 16px;"></div>
+            <div style="width:100%;height:90px;background:#222;border-radius:10px;margin-bottom:16px;"></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:18px;">
+              <div style="width:100px;height:14px;background:#555;border-radius:4px;"></div>
+              <div style="width:80px;height:16px;background:#fbe1d1;border-radius:4px;"></div>
+            </div>
+            <div style="display:flex;gap:12px;">
+              <div style="flex:1;height:38px;background:#333;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:13px;">取消</div>
+              <div style="flex:1;height:38px;background:#fbe1d1;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#5d2a1a;font-size:13px;font-weight:600;">确认购买</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function exportWireframe(encodedName) {
+      const wrapper = document.getElementById(`wf-${encodedName}`);
+      if (!wrapper) return;
+      const canvas = await html2canvas(wrapper.firstElementChild, { backgroundColor: null, scale: 2 });
+      const link = document.createElement('a');
+      link.download = `wireframe-${decodeURIComponent(encodedName)}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+      showStatus('效果图已导出', 'success');
+    }
+
+    async function exportAllWireframes() {
+      const checked = Array.from(document.querySelectorAll('.wireframe-checkbox:checked'));
+      if (checked.length === 0) {
+        showStatus('请至少选择一个界面', 'error');
+        return;
+      }
+      for (const cb of checked) {
+        await exportWireframe(encodeURIComponent(cb.value));
+        await new Promise(r => setTimeout(r, 300));
+      }
+      showStatus('全部效果图已导出', 'success');
+    }
+
+    function exportMarkdown() {
+      if (!currentOutput) {
+        showStatus('请先生成分析结果', 'error');
+        return;
+      }
+      const blob = new Blob([currentOutput], { type: 'text/markdown' });
+      saveAs(blob, `PRD分析_${new Date().toISOString().slice(0,10)}.md`);
+    }
+
+    function exportDocx() {
+      if (!currentOutput) {
+        showStatus('请先生成分析结果', 'error');
+        return;
+      }
+
+      const { Document, Paragraph, HeadingLevel, Packer, TextRun } = docx;
+      const lines = currentOutput.split('\n');
+      const children = [];
+
+      lines.forEach(line => {
+        if (line.startsWith('# ')) {
+          children.push(new Paragraph({ text: line.replace('# ', ''), heading: HeadingLevel.HEADING_1 }));
+        } else if (line.startsWith('## ')) {
+          children.push(new Paragraph({ text: line.replace('## ', ''), heading: HeadingLevel.HEADING_2 }));
+        } else if (line.startsWith('### ')) {
+          children.push(new Paragraph({ text: line.replace('### ', ''), heading: HeadingLevel.HEADING_3 }));
+        } else if (line.startsWith('- ') || line.startsWith('* ')) {
+          children.push(new Paragraph({ text: line.replace(/^[-*] /, ''), bullet: { level: 0 } }));
+        } else if (line.trim()) {
+          children.push(new Paragraph({ text: line }));
+        }
+      });
+
+      const doc = new Document({ sections: [{ properties: {}, children }] });
+      Packer.toBlob(doc).then(blob => {
+        saveAs(blob, `PRD分析_${new Date().toISOString().slice(0,10)}.docx`);
+      });
+    }
+
+    function copyOutput() {
+      if (!currentOutput) return;
+      navigator.clipboard.writeText(currentOutput).then(() => {
+        showStatus('分析结果已复制', 'success');
+      });
+    }
+
+    function saveAnalysis(input, output) {
+      const title = input.split('\n')[0].replace(/^【?/, '').replace(/】?$/, '').substring(0, 30) || '未命名分析';
+      const analysis = {
+        id: Date.now(),
+        title,
+        date: new Date().toLocaleString('zh-CN'),
+        input: input.substring(0, 200),
+        output: output.substring(0, 100)
+      };
+      analyses.unshift(analysis);
+      if (analyses.length > 20) analyses = analyses.slice(0, 20);
+      localStorage.setItem('gamePrdAnalyses', JSON.stringify(analyses));
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const container = document.getElementById('historyList');
+      if (analyses.length === 0) {
+        container.innerHTML = '<p class="text-sm text-ash text-center py-8">暂无历史记录</p>';
+        return;
+      }
+      container.innerHTML = analyses.map(a => `
+        <div class="p-3 rounded-xl bg-paper border border-hairline cursor-pointer hover:bg-fog hover:border-hairline transition-all" onclick="loadAnalysis(${a.id})">
+          <div class="text-sm text-ink font-medium truncate">${a.title}</div>
+          <div class="text-xs text-ash mt-1">${a.date}</div>
+        </div>
+      `).join('');
+    }
+
+    function loadAnalysis(id) {
+      const analysis = analyses.find(a => a.id === id);
+      if (analysis) {
+        showStatus('历史记录仅保存摘要，完整结果请重新生成', 'info');
+      }
+    }
+
+    function clearHistory() {
+      analyses = [];
+      localStorage.removeItem('gamePrdAnalyses');
+      renderHistory();
+    }
+
+    function loadApiKey() {
+      const key = localStorage.getItem('gamePrdAnalyzerApiKey');
+      if (key) document.getElementById('apiKey').value = key;
+    }
+
+    function showStatus(message, type) {
+      const toast = document.getElementById('statusToast');
+      const text = document.getElementById('statusText');
+      const icon = document.getElementById('statusIcon');
+
+      text.textContent = message;
+
+      const icons = {
+        success: '<svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>',
+        error: '<svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>',
+        loading: '<div class="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>',
+        info: '<svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+      };
+      icon.innerHTML = icons[type] || icons.info;
+
+      toast.classList.remove('hidden');
+
+      if (statusTimeout) clearTimeout(statusTimeout);
+      statusTimeout = setTimeout(() => {
+        toast.classList.add('hidden');
+      }, type === 'error' ? 5000 : 3500);
+    }
+  </script>
+</body>
+</html>
